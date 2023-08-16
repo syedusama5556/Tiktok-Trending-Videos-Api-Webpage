@@ -2,123 +2,237 @@
 <html>
 
 <head>
-    <title>Analytics Trending Video Grid</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
-
+    <title>Video Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
-    <h1>All Tiktok Trending Videos Grid</h1>
-    <div class="tab-container">
-        <div class="tab" onclick="openTab('index')">Trending Videos</div>
-        <div class="tab" onclick="openTab('allvideos')">All Videos</div>
-    </div>
-    <label for="regions">Select a region:</label>
-    <select id="regions" onchange="fetchVideosByRegion()">
-        <option value="US">United States</option>
-        <option value="AR">Argentina</option>
-        <option value="AU">Australia</option>
-        <option value="BR">Brazil</option>
-        <option value="CA">Canada</option>
-        <option value="CL">Chile</option>
-        <option value="CO">Colombia</option>
-        <option value="FR">France</option>
-        <option value="DE">Germany</option>
-        <option value="IN">India</option>
-        <option value="ID">Indonesia</option>
-        <option value="IT">Italy</option>
-        <option value="JP">Japan</option>
-        <option value="MX">Mexico</option>
-        <option value="MY">Malaysia</option>
-        <option value="PH">Philippines</option>
-        <option value="RU">Russia</option>
-        <option value="SG">Singapore</option>
-        <option value="KR">South Korea</option>
-        <option value="ES">Spain</option>
-        <option value="TH">Thailand</option>
-        <option value="TR">Turkey</option>
-        <option value="AE">United Arab Emirates</option>
-        <option value="VN">Vietnam</option>
-        <option value="ZA">South Africa</option>
-    </select>
-    
-    <div class="video-grid">
-        {% for video in videos %}
-        <div class="video-card" onclick="openModal('{{ video.id }}')">
-            <h2>{{ video.author.nickname }}</h2>
-            <p><strong>Likes:</strong> {{ video.stats.diggCount | formatNumber }} &nbsp;|&nbsp; <strong>Shares:</strong>
-                {{ video.stats.shareCount | formatNumber }} &nbsp;|&nbsp; <strong>Plays:</strong> {{
-                video.stats.playCount | formatNumber }}</p>
-            <img src="{{ video.video.dynamicCover }}" alt="Video Thumbnail">
-            <p><strong>Description:</strong> {{ video.desc }}</p>
-            <p><strong>Hashtags:</strong></p>
-            <p>
-                {% for hashtag in video.contents[0].textExtra %}
-                {{ hashtag.hashtagName }},
-                {% endfor %}
-            </p>
-        </div>
+    <h1>Video Analytics</h1>
+
+    <div class="region-tabs">
+        <button class="tab-button" onclick="openTab(event, 'all')">All Videos</button>
+        {% set regions = [] %}
+        {% for video in video_data %}
+        {% if video.region not in regions %}
+        {% set _ = regions.append(video.region) %}
+        <button class="tab-button" onclick="openTab(event, '{{ video.region }}')">{{ video.region }}</button>
+        {% endif %}
         {% endfor %}
     </div>
 
+    {% for region in regions %}
+    <div id="{{ region }}" class="tab-content">
+        <h2>{{ region }} Analytics</h2>
+        <div class="chart">
+            <h3>Likes Chart</h3>
+            <canvas id="likesChart_{{ region }}" width="400" height="200"></canvas>
+        </div>
+        <div class="chart">
+            <h3>Shares Chart</h3>
+            <canvas id="sharesChart_{{ region }}" width="400" height="200"></canvas>
+        </div>
+        <div class="chart">
+            <h3>Plays Chart</h3>
+            <canvas id="playsChart_{{ region }}" width="400" height="200"></canvas>
+        </div>
+    </div>
+    {% endfor %}
 
-    
-
-    <div class="modal" id="videoModal">
-        <div class="modal-content">
-            <div class="circle"></div>
-            <span class="close-button" onclick="closeModal()" style="color: black;">&times;</span>
-
-            <video controls id="modalVideo" style="height: 600px;" autoplay>
-                <source src="" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
+    <div id="all" class="tab-content">
+        <h2>All Videos Analytics</h2>
+        <div class="chart">
+            <canvas id="allMetricsByUserChart" width="400" height="200"></canvas>
         </div>
     </div>
 
     <script>
-        function openModal(videoSrc) {
+        var allMetricsByUserChart = null; // Add this line
 
+        var allLikesChart = null;
+        var allSharesChart = null;
+        var allPlaysChart = null;
 
-            fetch(`http://127.0.0.1:5000/tiktok?id=${videoSrc}`)
-                .then(response => response.json()) // Parse the response as JSON
-                .then(data => {
-                    const videoUrl = data.video_url; // Extract the video URL from the JSON response
+        var videoData = JSON.parse('{{ video_data | tojson | safe }}');
+        function openTab(evt, tabName) {
+            var tabContents = document.getElementsByClassName('tab-content');
+            for (var i = 0; i < tabContents.length; i++) {
+                tabContents[i].style.display = 'none';
+            }
 
-                    const modal = document.getElementById('videoModal');
-                    const modalVideo = document.getElementById('modalVideo');
+            document.getElementById(tabName).style.display = 'block';
+            if (tabName !== 'all') {
+                generateCharts(tabName);
+            } else {
+                generateAllMetricsByUserChart(); // Update this line
+            }
+        }
+    function generateAllMetricsByUserChart() {
+    var allMetricsByUserCanvas = document.getElementById('allMetricsByUserChart');
+    var allMetricsByUserContext = allMetricsByUserCanvas.getContext('2d');
 
-                    modalVideo.src = "http://127.0.0.1:5000/stream?url_base64=" + btoa(videoUrl);
-                    modal.style.display = 'flex';
-                })
-                .catch(error => console.log('error', error));
+    var allMetricsByUserData = {
+        labels: getUniqueUsersInRegion(videoData),
+        datasets: [
+            {
+                label: 'Likes',
+                data: getUserLikesInRegion(videoData),
+                backgroundColor: 'blue',
+                barPercentage: 0.3, // Adjust this value
+                categoryPercentage: 0.4, // Adjust this value
+            },
+            {
+                label: 'Shares',
+                data: getUserSharesInRegion(videoData),
+                backgroundColor: 'green',
+                barPercentage: 0.3, // Adjust this value
+                categoryPercentage: 0.4, // Adjust this value
+            },
+            {
+                label: 'Plays',
+                data: getUserPlaysInRegion(videoData),
+                backgroundColor: 'orange',
+                barPercentage: 0.3, // Adjust this value
+                categoryPercentage: 0.4, // Adjust this value
+            },
+        ],
+    };
 
+    if (allMetricsByUserChart) {
+        allMetricsByUserChart.destroy();
+    }
 
+    allMetricsByUserChart = new Chart(allMetricsByUserContext, {
+        type: 'bar',
+        data: allMetricsByUserData,
+        options: {
+            scales: {
+                x: {
+                    stacked: true,
+                },
+                y: {
+                    stacked: true,
+                },
+            },
+        },
+    });
+}
+        function generateCharts(region) {
+            if (region !== 'all') {
+                var regionVideos = videoData.filter(entry => entry.region === region);
+                var likes = regionVideos.map(entry => entry.likes);
+                var shares = regionVideos.map(entry => entry.shares);
+                var plays = regionVideos.map(entry => entry.plays);
 
+                // Likes chart
+                var likesChart = new Chart(document.getElementById('likesChart_' + region), {
+                    type: 'bar',
+                    data: {
+                        labels: Array.from({ length: regionVideos.length }, (_, i) => (i + 1).toString()),
+                        datasets: [{
+                            label: 'Likes',
+                            data: likes,
+                            backgroundColor: 'blue'
+                        }]
+                    }
+                });
+
+                // Shares chart
+                var sharesChart = new Chart(document.getElementById('sharesChart_' + region), {
+                    type: 'bar',
+                    data: {
+                        labels: Array.from({ length: regionVideos.length }, (_, i) => (i + 1).toString()),
+                        datasets: [{
+                            label: 'Shares',
+                            data: shares,
+                            backgroundColor: 'green'
+                        }]
+                    }
+                });
+
+                // Plays chart
+                var playsChart = new Chart(document.getElementById('playsChart_' + region), {
+                    type: 'bar',
+                    data: {
+                        labels: Array.from({ length: regionVideos.length }, (_, i) => (i + 1).toString()),
+                        datasets: [{
+                            label: 'Plays',
+                            data: plays,
+                            backgroundColor: 'orange'
+                        }]
+                    }
+                });
+            } else {
+                // Generate charts for "All Videos" tab
+                var allLikes = videoData.map(entry => entry.likes);
+                var allShares = videoData.map(entry => entry.shares);
+                var allPlays = videoData.map(entry => entry.plays);
+
+                // Likes chart for "All Videos"
+                var allLikesChart = new Chart(document.getElementById('allLikesChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: getUniqueUsersInRegion(videoData),
+                        datasets: [{
+                            label: 'Likes',
+                            data: getUserLikesInRegion(videoData),
+                            backgroundColor: 'blue'
+                        }]
+                    }
+                });
+
+                // Shares chart for "All Videos"
+                var allSharesChart = new Chart(document.getElementById('allSharesChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: getUniqueUsersInRegion(videoData),
+                        datasets: [{
+                            label: 'Shares',
+                            data: getUserSharesInRegion(videoData),
+                            backgroundColor: 'green'
+                        }]
+                    }
+                });
+
+                // Plays chart for "All Videos"
+                var allPlaysChart = new Chart(document.getElementById('allPlaysChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: getUniqueUsersInRegion(videoData),
+                        datasets: [{
+                            label: 'Plays',
+                            data: getUserPlaysInRegion(videoData),
+                            backgroundColor: 'orange'
+                        }]
+                    }
+                });
+            }
         }
 
-        function fetchVideosByRegion() {
-            const selectedRegion = document.getElementById('regions').value;
-
-            fetch(`http://127.0.0.1:5000/fetchvideosregion?region=${selectedRegion}`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log(data);
-                    window.location.reload();
-
-                })
-                .catch(error => console.log('Error fetching videos:', error));
+        function getUniqueUsersInRegion(videos) {
+            return [...new Set(videos.map(entry => entry.username))];
         }
 
-
-        function closeModal() {
-            const modal = document.getElementById('videoModal');
-            const modalVideo = document.getElementById('modalVideo');
-
-            modalVideo.src = '';
-            modal.style.display = 'none';
+        function getUserLikesInRegion(videos) {
+            return getUniqueUsersInRegion(videos).map(username =>
+                videos.filter(entry => entry.username === username).map(entry => entry.likes).reduce((a, b) => a + b, 0)
+            );
         }
+
+        function getUserSharesInRegion(videos) {
+            return getUniqueUsersInRegion(videos).map(username =>
+                videos.filter(entry => entry.username === username).map(entry => entry.shares).reduce((a, b) => a + b, 0)
+            );
+        }
+
+        function getUserPlaysInRegion(videos) {
+            return getUniqueUsersInRegion(videos).map(username =>
+                videos.filter(entry => entry.username === username).map(entry => entry.plays).reduce((a, b) => a + b, 0)
+            );
+        }
+        openTab(null, 'all');
+        generateCharts('all');
+        generateAllMetricsByUserChart();
+
     </script>
 </body>
 

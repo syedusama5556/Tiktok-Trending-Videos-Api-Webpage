@@ -21,11 +21,34 @@ def index():
 @app.route('/analytics')
 def analytics():
     try:
-        with open('jsonresponse.json', 'r', encoding='utf-8') as file:
-            video_data = json.load(file)
+        db = VideoDatabase()
+        db.connect()
+        video_data = []
+
+        selected_data = db.select_all()
+        if selected_data:
+            for row in selected_data:
+                if row:
+                    json_data = {
+                        'video_id': row[1],
+                        'username': row[2],
+                        'likes': row[3],
+                        'shares': row[4],
+                        'plays': row[5],
+                        'thumbnail': row[6],
+                        'description': row[7],
+                        'hashtags': ','.join([tag.strip() for tag in row[8].split(',') if tag.strip()]),
+                        'region': row[9]
+                    }
+                    video_data.append(json_data)
+        else:
+            video_data = []
+
+        db.close()
     except json.JSONDecodeError:
         video_data = []
-    return render_template('analytics.html', videos=video_data)
+
+    return render_template('analytics.html', video_data=video_data)
 
 
 @app.route('/allvideos')
