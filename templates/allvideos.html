@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Tiktok Trending Video Grid</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+
+</head>
+
+<body>
+    <h1>All Tiktok Trending Videos Grid</h1>
+    <div class="tab-container">
+        <div class="tab" onclick="openTab('index')">Trending Videos</div>
+        <div class="tab" onclick="openTab('analytics')">Analytics</div>
+    </div>
+
+    
+
+    <div class="video-grid">
+        {% for video in videos %}
+        <div class="video-card" onclick="openModal('{{ video.video_id }}')">
+            <h2>{{ video.username }}</h2>
+            <p><strong>Region:</strong> {{ video.region }}</p>
+            <p><strong>Likes:</strong> {{ video.likes | formatNumber }} &nbsp;|&nbsp; <strong>Shares:</strong> {{ video.shares | formatNumber }} &nbsp;|&nbsp; <strong>Plays:</strong> {{ video.plays | formatNumber }}</p>
+            <img src="{{ video.thumbnail }}" alt="Video Thumbnail">
+            <p><strong>Description:</strong> {{ video.description }}</p>
+            <p><strong>Hashtags:</strong></p>
+            <p>
+                {% for hashtag in video.hashtags.split(',') %}
+                {{ hashtag }},
+                {% endfor %}
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+    
+    
+
+    <div class="modal" id="videoModal">
+        <div class="modal-content">
+            <div class="circle"></div>
+            <span class="close-button" onclick="closeModal()" style="color: black;">&times;</span>
+
+            <video controls id="modalVideo" style="height: 600px;" autoplay>
+                <source src="" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+    </div>
+
+    <script>
+        function openModal(videoSrc) {
+
+
+            fetch(`http://127.0.0.1:5000/tiktok?id=${videoSrc}`)
+                .then(response => response.json()) // Parse the response as JSON
+                .then(data => {
+                    const videoUrl = data.video_url; // Extract the video URL from the JSON response
+
+                    const modal = document.getElementById('videoModal');
+                    const modalVideo = document.getElementById('modalVideo');
+
+                    modalVideo.src = "http://127.0.0.1:5000/stream?url_base64=" + btoa(videoUrl);
+                    modal.style.display = 'flex';
+                })
+                .catch(error => console.log('error', error));
+
+
+
+        }
+
+        function fetchVideosByRegion() {
+            const selectedRegion = document.getElementById('regions').value;
+
+            fetch(`http://127.0.0.1:5000/fetchvideosregion?region=${selectedRegion}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    window.location.reload();
+
+                })
+                .catch(error => console.log('Error fetching videos:', error));
+        }
+
+
+        function closeModal() {
+            const modal = document.getElementById('videoModal');
+            const modalVideo = document.getElementById('modalVideo');
+
+            modalVideo.src = '';
+            modal.style.display = 'none';
+        }
+    </script>
+</body>
+
+</html>
