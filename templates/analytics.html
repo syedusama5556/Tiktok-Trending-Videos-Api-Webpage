@@ -66,59 +66,63 @@
                 generateAllMetricsByUserChart(); // Update this line
             }
         }
-    function generateAllMetricsByUserChart() {
-    var allMetricsByUserCanvas = document.getElementById('allMetricsByUserChart');
-    var allMetricsByUserContext = allMetricsByUserCanvas.getContext('2d');
 
-    var allMetricsByUserData = {
-        labels: getUniqueUsersInRegion(videoData),
-        datasets: [
-            {
-                label: 'Likes',
-                data: getUserLikesInRegion(videoData),
-                backgroundColor: 'blue',
-                barPercentage: 0.3, // Adjust this value
-                categoryPercentage: 0.4, // Adjust this value
-            },
-            {
-                label: 'Shares',
-                data: getUserSharesInRegion(videoData),
-                backgroundColor: 'green',
-                barPercentage: 0.3, // Adjust this value
-                categoryPercentage: 0.4, // Adjust this value
-            },
-            {
-                label: 'Plays',
-                data: getUserPlaysInRegion(videoData),
-                backgroundColor: 'orange',
-                barPercentage: 0.3, // Adjust this value
-                categoryPercentage: 0.4, // Adjust this value
-            },
-        ],
-    };
+        function generateAllMetricsByUserChart() {
+            var allMetricsByUserCanvas = document.getElementById('allMetricsByUserChart');
+            var allMetricsByUserContext = allMetricsByUserCanvas.getContext('2d');
 
-    if (allMetricsByUserChart) {
-        allMetricsByUserChart.destroy();
-    }
+            var allMetricsByUserData = {
+                labels: getUniqueUsersInRegion(videoData),
+                datasets: [
+                    {
+                        label: 'Likes',
+                        data: getUserLikesInRegion(videoData),
+                        backgroundColor: 'blue',
+                        barPercentage: 0.3, // Adjust this value
+                        categoryPercentage: 0.4, // Adjust this value
+                    },
+                    {
+                        label: 'Shares',
+                        data: getUserSharesInRegion(videoData),
+                        backgroundColor: 'green',
+                        barPercentage: 0.3, // Adjust this value
+                        categoryPercentage: 0.4, // Adjust this value
+                    },
+                    {
+                        label: 'Plays',
+                        data: getUserPlaysInRegion(videoData),
+                        backgroundColor: 'orange',
+                        barPercentage: 0.3, // Adjust this value
+                        categoryPercentage: 0.4, // Adjust this value
+                    },
+                ],
+            };
 
-    allMetricsByUserChart = new Chart(allMetricsByUserContext, {
-        type: 'bar',
-        data: allMetricsByUserData,
-        options: {
-            scales: {
-                x: {
-                    stacked: true,
+            if (allMetricsByUserChart) {
+                allMetricsByUserChart.destroy();
+            }
+
+            allMetricsByUserChart = new Chart(allMetricsByUserContext, {
+                type: 'bar',
+                data: allMetricsByUserData,
+                options: {
+                    scales: {
+                        x: {
+                            stacked: true,
+                        },
+                        y: {
+                            stacked: true,
+                        },
+                    },
                 },
-                y: {
-                    stacked: true,
-                },
-            },
-        },
-    });
-}
+            });
+        }
+
+
         function generateCharts(region) {
             if (region !== 'all') {
                 var regionVideos = videoData.filter(entry => entry.region === region);
+               
                 var likes = regionVideos.map(entry => entry.likes);
                 var shares = regionVideos.map(entry => entry.shares);
                 var plays = regionVideos.map(entry => entry.plays);
